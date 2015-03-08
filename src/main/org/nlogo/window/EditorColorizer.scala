@@ -138,8 +138,9 @@ class EditorColorizer(parser: ParserServices) extends Colorizer[TokenType] {
   // the editor retain focus for key events.  FD - 3/7/15
   class CodeCompletionPopup(editor: EditorArea[_], allTokens: Seq[(String, String)], f: (Int, String) => Unit)
   extends javax.swing.JPopupMenu {
-    var knownitems: Seq[javax.swing.JMenuItem] = Seq()
+    val PageSize = 30
     var tokenName: String = ""
+    var page: Integer = 1
 
     addMenuKeyListener(new javax.swing.event.MenuKeyListener {
        override def menuKeyTyped(e: javax.swing.event.MenuKeyEvent): Unit = {
@@ -174,9 +175,15 @@ class EditorColorizer(parser: ParserServices) extends Colorizer[TokenType] {
       }
     }
 
+    class PageAction(name: String, increment: Int) extends javax.swing.text.TextAction(name) {
+      override def actionPerformed(e:java.awt.event.ActionEvent): Unit = {
+        page += increment
+        refreshMyself
+      }
+    }
+
     def refreshMyself: Unit = {
-      knownitems.foreach(remove(_))
-      knownitems = Seq()
+      removeAll
 
       val currentToken = Option(editor.getCursorToken)
       tokenName = currentToken.map(_.name).getOrElse("")
@@ -185,16 +192,24 @@ class EditorColorizer(parser: ParserServices) extends Colorizer[TokenType] {
       val tokens = allTokens.filter( { token => !(tokenName.length == 0 && token._1.startsWith("_")) }).
                      filter(_._1.startsWith(tokenName)).sortWith(_._1 < _._1)
       if(tokens.isEmpty) {
-        knownitems = knownitems :+ add(new javax.swing.JMenuItem("-- No Completions --"))
+        add(new javax.swing.JMenuItem("-- No Completions --"))
       } else {
-        tokens.take(30).foreach { case (name, source) =>
-          knownitems = knownitems :+ add(new CodeCompletionAction(name, position, name.stripPrefix(tokenName)))
+        if(tokens.size > PageSize && page > 1)
+          add(new PageAction("... " + ((page - 1) * PageSize) + " more", -1))
+        tokens
+          .take(page * PageSize)
+          .takeRight(Math.min(PageSize, tokens.size - (page - 1) * PageSize))
+          .foreach { case (name, source) =>
+            add(new CodeCompletionAction(name, position, name.stripPrefix(tokenName)))
         }
-        if(tokens.size > 30) knownitems = knownitems :+ add(new javax.swing.JMenuItem("... " + (tokens.size - 30) + " more"))
+        if(tokens.size > page * PageSize)
+          add(new PageAction("... " + (tokens.size - page * PageSize) + " more", 1))
       }
 
       setLocation(editor.modelToView(position).x + editor.getLocationOnScreen.x,
         editor.modelToView(position).y + editor.getLocationOnScreen.y)
+
+      setVisible(true)
     }
   }
 
@@ -208,7 +223,7 @@ class EditorColorizer(parser: ParserServices) extends Colorizer[TokenType] {
     editor.setCaretPosition(position)
 
     val menu = new CodeCompletionPopup(editor, allTokens, 
-      { (position, insert) => doc.insertString(position, insert, null) }
+      { (position, insert) => doc.insertString(position, insert + " ", null) }
     )
 
     menu.show(editor, editor.modelToView(position).x, editor.modelToView(position).y)
