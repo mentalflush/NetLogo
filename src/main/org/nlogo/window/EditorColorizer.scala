@@ -167,7 +167,6 @@ class EditorColorizer(parser: ParserServices) extends Colorizer[TokenType] {
        override def menuKeyPressed(e: javax.swing.event.MenuKeyEvent) = { }
        override def menuKeyReleased(e: javax.swing.event.MenuKeyEvent) = { }
       })
-    refreshMyself
 
     class CodeCompletionAction(name: String, position: Int, insert: String) extends javax.swing.text.TextAction(name) {
       override def actionPerformed(e:java.awt.event.ActionEvent): Unit = {
@@ -179,6 +178,7 @@ class EditorColorizer(parser: ParserServices) extends Colorizer[TokenType] {
       override def actionPerformed(e:java.awt.event.ActionEvent): Unit = {
         page += increment
         refreshMyself
+        setVisible(true)
       }
     }
 
@@ -208,8 +208,6 @@ class EditorColorizer(parser: ParserServices) extends Colorizer[TokenType] {
 
       setLocation(editor.modelToView(position).x + editor.getLocationOnScreen.x,
         editor.modelToView(position).y + editor.getLocationOnScreen.y)
-
-      setVisible(true)
     }
   }
 
@@ -226,6 +224,7 @@ class EditorColorizer(parser: ParserServices) extends Colorizer[TokenType] {
       { (position, insert) => doc.insertString(position, insert + " ", null) }
     )
 
+    menu.refreshMyself
     menu.show(editor, editor.modelToView(position).x, editor.modelToView(position).y)
   }
 }
